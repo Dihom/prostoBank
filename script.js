@@ -62,9 +62,11 @@ const inputLoginPin = document.querySelector('.login__input--pin');
 const inputTransferTo = document.querySelector('.form__input--to');
 const inputTransferAmount = document.querySelector('.form__input--amount');
 const inputLoanAmount = document.querySelector('.form__input--loan-amount');
-const inputCloseUsername = document.querySelector('.form__input--user');
+const inputCloseNickname = document.querySelector('.form__input--user');
 const inputClosePin = document.querySelector('.form__input--pin');
 
+
+// Отображение вывода и поступлений средств на счет
 const displayTransactions = function(transactions) {
 
   containerTransactions.innerHTML = '';
@@ -92,6 +94,7 @@ const displayTransactions = function(transactions) {
 
 // console.log(containerTransactions.innerHTML);
 
+// Создание никнейма из имени и фамилии пользователя по первым заглавным буквам
 const createNicknames = function(accs) {
   accs.forEach(function(acc) {
     acc.nickname = acc.userName
@@ -114,14 +117,17 @@ createNicknames(accounts);
 
 // console.log(nickname)
 
-const displayBalance = function(transactions) {
-  const balance = transactions.reduce((acc, trans) =>
+// Отображение основного баланса пользователя
+const displayBalance = function(account) {
+  const balance = account.transactions.reduce((acc, trans) =>
   acc + trans, 0);
+  account.balance = balance;
   labelBalance.textContent = `${balance}$`
 }
 
 // displayBalance(account1.transactions);
 
+// Отображение денежных средств у пользователя
 const displayTotal = function (account) {
   const depositesTotal = account.transactions
     .filter(trans => trans > 0)
@@ -145,8 +151,21 @@ const displayTotal = function (account) {
 
 // displayTotal(account1.transactions);
 
+// Функция изенения баланса пользователя после совершения операций
+const updateUi = function(account) {
+  // Display transactions
+  displayTransactions(account.transactions);
+
+  // Display balance
+  displayBalance(account);
+
+  // Display total
+  displayTotal(account);
+}
+
 let currentAccount;
 
+// Ввод логина и пароля с очитской полей после ввода
 btnLogin.addEventListener('click', function (e) {
   e.preventDefault();
   currentAccount = accounts.find(account => account.nickname === inputLoginUsername.value);
@@ -163,23 +182,53 @@ btnLogin.addEventListener('click', function (e) {
     inputLoginPin.value = '';
     inputLoginPin.blur();
 
-    // Display transactions
-    displayTransactions(currentAccount.transactions);
-
-    // Display balance
-    displayBalance(currentAccount.transactions);
-
-
-    // Display total
-    displayTotal(currentAccount);
-
+    updateUi(currentAccount);
   }
 });
 
-
+// Event handlers
+// Перевод денег другому пользователю
 btnTransfer.addEventListener('click', function(e) {
   e.preventDefault();
   const transferAmount = Number(inputTransferAmount.value);
   const recipientNickname = inputTransferTo.value;
-  const recipientAccount = accounts.find(account => account.nickname === recipientNickname)
+  const recipientAccount = accounts.find(account => account.nickname === recipientNickname);
+  
+  inputTransferTo.value = '';
+  inputTransferAmount.value = '';
+
+  if(transferAmount > 0 && currentAccount.balance >= transferAmount && recipientAccount && currentAccount.nickname !== recipientAccount?.nickname) {
+    currentAccount.transactions.push(-transferAmount);
+    recipientAccount.transactions.push(transferAmount);
+    updateUi(currentAccount);
+  }
+});
+
+// Закрытие счета пользователя
+btnClose.addEventListener('click', function(e) {
+  e.preventDefault();
+  if (inputCloseNickname.value === currentAccount.nickname && Number(inputClosePin.value) === currentAccount.pin) {
+    const currentAccountIndex = accounts.findIndex(account => account.nickname === currentAccount.nickname);
+
+    accounts.splice(currentAccountIndex, 1);
+
+    containerApp.style.opacity = 0;
+    labelWelcome.textContent = 'Войдите в свой аккаунт'
+  }
+
+  inputCloseNickname.value = '';
+  inputClosePin.value = '';
+});
+
+
+// Запрос займа у банка
+btnLoan.addEventListener('click', function(e) {
+  e.preventDefault();
+  const loanAmount = Number(inputLoanAmount.value);
+
+  if (loanAmount > 0 && currentAccount.transactions.some(trans => trans >= (loanAmount * 10) / 100)) {
+    currentAccount.transactions.push(loanAmount);
+    updateUi(currentAccount); 
+  }
+  inputLoanAmount.value = '';
 })
