@@ -67,11 +67,13 @@ const inputClosePin = document.querySelector('.form__input--pin');
 
 
 // Отображение вывода и поступлений средств на счет
-const displayTransactions = function(transactions) {
+const displayTransactions = function(transactions, sort = false) {
 
   containerTransactions.innerHTML = '';
 
-  transactions.forEach(function(trans, index) {
+  const transacs = sort ? transactions.slice().sort((x, y) => x - y) : transactions;
+
+  transacs.forEach(function(trans, index) {
 
     const transType = trans > 0 ? 'deposit' : 'withdrawal';
 
@@ -231,4 +233,29 @@ btnLoan.addEventListener('click', function(e) {
     updateUi(currentAccount); 
   }
   inputLoanAmount.value = '';
+})
+
+
+// Сортировка баланса
+
+let  transactionsSorted = false;
+
+btnSort.addEventListener('click', function(e) {
+  e.preventDefault();
+  displayTransactions(currentAccount.transactions, !transactionsSorted);
+  transactionsSorted = !transactionsSorted;
+})
+
+
+// Array.from() пример
+
+
+const logoImage = document.querySelector('.logo');
+logoImage.addEventListener('click', function() {
+  const transactionsUi = document.querySelectorAll('.transactions__value');
+  console.log(transactionsUi);
+  // const transactionsUiArray = Array.from(transactionsUi)
+  // console.log(transactionsUiArray.map(elem => Number(elem.textContent)));
+  const transactionsUiArray = Array.from(transactionsUi, elem => Number(elem.textContent));
+  console.log(transactionsUiArray);
 })
