@@ -14,8 +14,8 @@ const account1 = {
     '2021-01-22T12:17:46.255Z',
     '2021-02-12T15:14:06.486Z',
     '2021-03-09T11:42:26.371Z',
-    '2021-05-21T07:43:59.331Z',
-    '2021-06-22T15:21:20.814Z',
+    '2022-06-10T07:43:59.331Z',
+    '2022-06-12T15:21:20.814Z',
   ],
   currency: 'USD',
   locale: 'en-US',
@@ -71,7 +71,7 @@ const account4 = {
     '2021-01-22T12:17:46.255Z',
     '2021-02-12T15:14:06.486Z',
   ],
-  currency: 'EUR',
+  currency: 'CAD',
   locale: 'fr-CA',
 };
 
@@ -120,6 +120,37 @@ const inputCloseNickname = document.querySelector('.form__input--user');
 const inputClosePin = document.querySelector('.form__input--pin');
 
 
+
+// Добавление даты в транзакции
+
+const formatTransactionDate = function(date, locale) {
+
+    const getDaysBetween2Dates = (date1, date2) => Math.round(Math.abs((date2 - date1) / (1000 * 60 * 60 * 24)));
+
+    const daysPassed = getDaysBetween2Dates(new Date(), date);
+    // console.log(daysPassed);
+
+    if(daysPassed === 0) return 'сегодня'
+    if(daysPassed === 1) return 'вчера'
+    if(daysPassed <= 5) return `${daysPassed} дня назад`
+
+    // const day = `${date.getDate()}`.padStart(2, '0');
+    // const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    // const year = date.getFullYear();
+
+    // return `${day}/${month}/${year}`
+    return new Intl.DateTimeFormat(locale).format(date);
+}
+
+// Форматирование валюты
+const formatCurrency = function(value, locale, currency) {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: currency,
+  }).format(value);
+}
+
+
 // Отображение вывода и поступлений средств на счет
 const displayTransactions = function(account, sort = false) {
 
@@ -133,11 +164,9 @@ const displayTransactions = function(account, sort = false) {
 
     const date = new Date(account.transactionsDates[index]);
 
-    const day = `${date.getDate()}`.padStart(2, '0');
-    const month = `${date.getMonth() + 1}`.padStart(2, '0');
-    const year = date.getFullYear();
+    const transDate = formatTransactionDate(date, account.locale);
 
-    const transDate = `${day}/${month}/${year}`;
+    const formattedTrans = formatCurrency(trans, account.locale, account.currency);
 
     const transactionRow = `
     <div class="transactions__row">
@@ -145,7 +174,7 @@ const displayTransactions = function(account, sort = false) {
       ${index + 1} ${transType}
     </div>
     <div class="transactions__date">${transDate}</div>
-    <div class="transactions__value">${trans.toFixed(2)}</div>
+    <div class="transactions__value">${formattedTrans}</div>
   </div>
   `;
 
@@ -187,7 +216,8 @@ const displayBalance = function(account) {
   const balance = account.transactions.reduce((acc, trans) =>
   acc + trans, 0);
   account.balance = balance;
-  labelBalance.textContent = `${balance.toFixed(2)}$`
+  
+  labelBalance.textContent = formatCurrency(balance, account.locale, account.currency);
 }
 
 // displayBalance(account1.transactions);
@@ -197,21 +227,21 @@ const displayTotal = function (account) {
   const depositesTotal = account.transactions
     .filter(trans => trans > 0)
     .reduce((acc, trans) => acc + trans, 0);
-    labelSumIn.textContent = `${depositesTotal.toFixed(2)}$`;
+    labelSumIn.textContent = formatCurrency(depositesTotal, account.locale, account.currency);
 
   const withdrawalsTotal = account.transactions
-  .filter(trans => trans < 0)
-  .reduce((acc, trans) => acc + trans, 0);
-  labelSumOut.textContent = `${withdrawalsTotal.toFixed(2)}$`
+    .filter(trans => trans < 0)
+    .reduce((acc, trans) => acc + trans, 0);
+    labelSumOut.textContent = formatCurrency(withdrawalsTotal, account.locale, account.currency);
 
   const interestTotal = account.transactions
-  .filter(trans => trans > 0)
-  .map(depos => (depos * account.interest) / 100)
-  .filter((interest, index, arr) => {
+    .filter(trans => trans > 0)
+    .map(depos => (depos * account.interest) / 100)
+    .filter((interest, index, arr) => {
     return interest >= 5;
   })
   .reduce((acc, interest) => acc + interest, 0);
-  labelSumInterest.textContent = `${interestTotal.toFixed(2)}$`
+  labelSumInterest.textContent = formatCurrency(interestTotal, account.locale, account.currency);
 };
 
 // displayTotal(account1.transactions);
@@ -228,7 +258,7 @@ const updateUi = function(account) {
   displayTotal(account);
 }
 
-let currentAccount;
+let currentAccount, currentLogOutTimer;
 
 // Always logged in
 // currentAccount = account1;
@@ -236,7 +266,38 @@ let currentAccount;
 // containerApp.style.opacity = 1;
 
 
-// labelDate.textContent = now;
+const startLogoutTimer = function() {
+  const logOutTimerCallback = function() {
+    const minutes = String(Math.trunc(time / 60)).padStart(2, '0');
+    const seconds = String(time % 60).padStart(2, '0');
+
+    // В каждом вызове показывать оставшееся врмея в UI
+    labelTimer.textContent = `${minutes}:${seconds}`;
+  
+
+    // После истечения времени остановить таймер и выйти из приложения
+    if(time === 0) {
+      clearInterval(logOutTimer)
+
+      containerApp.style.opacity = '0';
+
+      labelWelcome.textContent = 'Войдите в свой аккаунт'
+    }
+
+    time--;
+
+}
+  
+  // Установить время выхода через 5 минут
+  let time = 300;
+
+  // Вызов таймера каждую секунду
+  logOutTimerCallback();
+  const logOutTimer = setInterval(logOutTimerCallback, 1000);
+
+  return logOutTimer;
+};
+
 
 // Ввод логина и пароля с очитской полей после ввода
 btnLogin.addEventListener('click', function (e) {
@@ -250,15 +311,36 @@ btnLogin.addEventListener('click', function (e) {
 
     labelWelcome.textContent = `Рады, что Вы снова с нами, ${currentAccount.userName.split(' ')[0]}!`
 
+    // const now = new Date();
+    // const day = `${now.getDate()}`.padStart(2, '0');
+    // const month = `${now.getMonth() + 1}`.padStart(2, '0');
+    // const year = now.getFullYear();
+    // labelDate.textContent = `${day}/${month}/${year}`;
+
     const now = new Date();
-    const day = `${now.getDate()}`.padStart(2, '0');
-    const month = `${now.getMonth() + 1}`.padStart(2, '0');
-    const year = now.getFullYear();
+    const options = {
+      hour: 'numeric',
+      minute: 'numeric',
+      day: 'numeric',
+      month: '2-digit',
+      year: 'numeric',
+      weekday: 'long',
+    };
+
+    // const locale = navigator.language;
+    // console.log(locale)
+    labelDate.textContent = new Intl.DateTimeFormat(currentAccount.locale, options)
+    .format(now);
+
 
     // Clear inputs
     inputLoginUsername.value = '';
     inputLoginPin.value = '';
     inputLoginPin.blur();
+
+    // Chec if the timer exists
+    if (currentLogOutTimer) clearInterval(currentLogOutTimer);
+    currentLogOutTimer = startLogoutTimer();
 
     updateUi(currentAccount);
   }
@@ -286,6 +368,10 @@ btnTransfer.addEventListener('click', function(e) {
     recipientAccount.transactionsDates.push(new Date().toISOString());
 
     updateUi(currentAccount);
+
+    // Reset the timer
+    clearInterval(currentLogOutTimer);
+    currentLogOutTimer = startLogoutTimer();
   }
 });
 
@@ -312,12 +398,22 @@ btnLoan.addEventListener('click', function(e) {
   const loanAmount = Math.floor(inputLoanAmount.value);
 
   if (loanAmount > 0 && currentAccount.transactions.some(trans => trans >= (loanAmount * 10) / 100)) {
-    currentAccount.transactions.push(loanAmount);
-    currentAccount.transactionsDates.push(new Date().toISOString());
-    updateUi(currentAccount); 
+
+    setTimeout(function() {
+      currentAccount.transactions.push(loanAmount);
+      currentAccount.transactionsDates.push(new Date().toISOString());
+      updateUi(currentAccount);
+
+      
+
+    }, 5000) 
   }
   inputLoanAmount.value = '';
-})
+
+    // Reset the timer
+    clearInterval(currentLogOutTimer);
+    currentLogOutTimer = startLogoutTimer();
+});
 
 
 // Сортировка баланса
@@ -345,18 +441,18 @@ btnSort.addEventListener('click', function(e) {
 // })
 
 // Окрашивание каждой второй строки баланса в серый цвет
-const logoImage = document.querySelector('.logo');
+// const logoImage = document.querySelector('.logo');
 
-logoImage.addEventListener('click', function() {
+// logoImage.addEventListener('click', function() {
 
-[...document.querySelectorAll('.transactions__row')].forEach(function(row, i) {
+// [...document.querySelectorAll('.transactions__row')].forEach(function(row, i) {
 
-  if(i % 2 === 0) {
-    row.style.backgroundColor = 'grey'
+//   if(i % 2 === 0) {
+//     row.style.backgroundColor = 'grey'
 
-  }
-})
-});
+//   }
+// })
+// });
 
 // const now = new Date();
 // console.log(now)
@@ -395,3 +491,52 @@ logoImage.addEventListener('click', function() {
 
 // futureDate.setFullYear(2223);
 // console.log(futureDate)
+
+// const futureDate = new Date(2222, 1, 13, 11, 28, 59);
+// console.log(Number(futureDate))
+// console.log(+futureDate)
+// console.log(-futureDate)
+
+// const getDaysBetween2Days = (date1, date2) => Math.abs(endDate - startDate) / (1000 * 60 * 60 * 24);
+
+// const days = getDaysBetween2Days(new Date(2021, 9, 1), new Date(2021, 9, 12));
+// console.log(days)
+
+// Интернационализация Чисел
+
+// const a = 325458478.21;
+
+// const options = {
+//   style: 'currency',
+//   unit: 'celsius',
+//   currency: 'RUB'
+// }
+
+// console.log('US', new Intl.NumberFormat('en-US', options).format(a));
+// console.log('Ukraine', new Intl.NumberFormat('uk-UA', options).format(a));
+// console.log('Russia', new Intl.NumberFormat('ru-RU', options).format(a));
+// console.log('Germany', new Intl.NumberFormat('de-DE', options).format(a));
+// console.log('Syria', new Intl.NumberFormat('ar-SY', options).format(a));
+
+
+// Таймеры
+
+// // setTimeout()
+// const ingridients = ['', 'Лосось'];
+// const sushiTimer = setTimeout(
+//   (ingrid1, ingrid2) => 
+//     console.log(`Ваши суши доставлены! Ингридиенты: ${ingrid1}, ${ingrid2}`),
+//     3000,
+//     ...ingridients
+// );
+
+// console.log('Ожидание...');
+
+// if(ingridients.includes('Тунец')) clearTimeout(sushiTimer)
+
+
+// // setInterval()
+// setInterval(function() {
+//   const now = new Date();
+//   console.log(now)
+// },5000)
